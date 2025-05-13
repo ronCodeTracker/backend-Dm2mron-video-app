@@ -24,17 +24,28 @@ const pool = mysql.createPool({
 })();
 
 
-// Get all videos
 exports.handler = async (event) => {
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ message: 'Method Not Allowed' }),
+    };
+  }
+
   try {
-    const [rows] = await db.query('SELECT id, name, category, created_at FROM videos');
-    res.json(rows);
+    const [videos] = await pool.query('SELECT * FROM videos');
+    return {
+      statusCode: 200,
+      body: JSON.stringify(videos),
+    };
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error fetching videos' });
+    console.error('Error retrieving videos:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Error retrieving videos' }),
+    };
   }
 };
-
 
 
 
