@@ -1,7 +1,5 @@
 
-
 [build]
-  command = "npm run build"
+  command = "echo 'No build step required'" # No-op command
   functions = "netlify/functions"
-
 
