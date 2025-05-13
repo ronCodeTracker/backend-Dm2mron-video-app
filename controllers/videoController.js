@@ -3,7 +3,7 @@
 
 //const fs = require('fs');
 //const path = require('path');
-const db = require('../models/db');
+const db = require('../models/dbMysql');
 
 
 //const uploadDir = path.join(__dirname, '../uploads');

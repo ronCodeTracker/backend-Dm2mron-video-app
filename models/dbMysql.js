@@ -2,12 +2,13 @@
 
 const mysql = require('mysql2/promise');
 
+//This file does not contain secrets.  All sensitive information is stored in enviromental variables.
 const pool = mysql.createPool({
-  host: 'db-mysql-nyc3-78333-do-user-22139665-0.i.db.ondigitalocean.com',
-  user: 'doadmin',
-  password: 'AVNS_0jj3Y_0hiqivfBRHzNZ',
-  database: 'video_app',
-  port: 25060
+  host: process.env.DATABASE_URL,
+  user: process.env.USER_NAME,
+  password: process.env.PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.PORT
 });
 
 // Test the database connection
