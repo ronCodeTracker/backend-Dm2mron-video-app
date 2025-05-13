@@ -11,6 +11,17 @@ const pool = mysql.createPool({
 });
 
 
+// Test the database connection
+(async () => {
+  try {
+    const connection = await pool.getConnection();
+    console.log('Database connection successful!');
+    connection.release(); // Release the connection back to the pool
+  } catch (error) {
+    console.error('Database connection failed:', error.message);
+    process.exit(1); // Exit the application with an error code
+  }
+})();
 
 
 // Get all videos
