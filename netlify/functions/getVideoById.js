@@ -41,9 +41,10 @@ exports.handler = async (event) => {
   }
 
   const id = event.queryStringParameters.id;
-
+  console.log('Received request for video ID:', id);
   try {
     const [video] = await pool.query('SELECT * FROM videos WHERE id = ?', [id]);
+    console.log('Video metadata:', video);
     if (video.length === 0) {
       return {
         statusCode: 404,
@@ -59,7 +60,7 @@ exports.handler = async (event) => {
       'SELECT chunk_data FROM video_chunks WHERE video_id = ? ORDER BY chunk_index ASC',
       [id]
     );
-
+     console.log('Number of chunks:', chunks.length);
     if (chunks.length === 0) {
       return {
         statusCode: 404,
@@ -72,7 +73,8 @@ exports.handler = async (event) => {
     }
 
     const videoBuffer = Buffer.concat(chunks.map((chunk) => chunk.chunk_data));
-
+    console.log('Final video buffer size:', videoBuffer.length);
+    
     return {
       statusCode: 200,
       headers: {
