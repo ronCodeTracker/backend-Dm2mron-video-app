@@ -3,7 +3,6 @@
 
 
 
-
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
@@ -21,7 +20,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       },
@@ -33,7 +32,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 405,
       headers: {
-        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
       },
       body: JSON.stringify({ message: 'Method Not Allowed' }),
@@ -42,6 +41,7 @@ exports.handler = async (event) => {
 
   const id = event.queryStringParameters.id;
   console.log('Received request for video ID:', id);
+
   try {
     const [video] = await pool.query('SELECT * FROM videos WHERE id = ?', [id]);
     console.log('Video metadata:', video);
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 404,
         headers: {
-          'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+          'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
         },
         body: JSON.stringify({ message: 'Video not found' }),
@@ -60,29 +60,30 @@ exports.handler = async (event) => {
       'SELECT chunk_data FROM video_chunks WHERE video_id = ? ORDER BY chunk_index ASC',
       [id]
     );
-     console.log('Number of chunks:', chunks.length);
+    console.log('Number of chunks:', chunks.length);
+
     if (chunks.length === 0) {
       return {
         statusCode: 404,
         headers: {
-          'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+          'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
         },
         body: JSON.stringify({ message: 'No chunks found for this video' }),
       };
     }
 
-    const videoBuffer = Buffer.concat(chunks.map((chunk) => chunk.chunk_data));
-    console.log('Final video buffer size:', videoBuffer.length);
-    
+    // Stream the video chunks
+    const videoStream = chunks.map((chunk) => chunk.chunk_data).join('');
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Content-Type': 'video/mp4',
+        'Transfer-Encoding': 'chunked',
       },
-      body: videoBuffer.toString('base64'),
+      body: videoStream,
       isBase64Encoded: true,
     };
   } catch (error) {
@@ -90,12 +91,10 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers: {
-        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
       },
       body: JSON.stringify({ message: 'Error retrieving video' }),
     };
   }
 };
-
-
