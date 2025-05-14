@@ -1,4 +1,3 @@
-
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
@@ -9,7 +8,6 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   port: process.env.PORT,
 });
-
 
 // Test the database connection
 (async () => {
@@ -23,17 +21,38 @@ const pool = mysql.createPool({
   }
 })();
 
-
-
 // Get all videos
-exports.getAllVideos = async (req, res) => {
+exports.handler = async (event) => {
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
+      body: JSON.stringify({ message: 'Method Not Allowed' }),
+    };
+  }
+
   try {
-    const [rows] = await db.query('SELECT id, name, category, created_at FROM videos');
-    res.json(rows);
+    const [rows] = await pool.query('SELECT id, name, category, created_at FROM videos');
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
+      body: JSON.stringify(rows),
+    };
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error fetching videos' });
+    console.error('Error fetching videos:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
+      body: JSON.stringify({ message: 'Error fetching videos' }),
+    };
   }
 };
-
-
