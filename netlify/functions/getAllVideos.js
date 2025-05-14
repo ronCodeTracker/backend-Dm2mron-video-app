@@ -9,6 +9,8 @@ const pool = mysql.createPool({
   port: process.env.PORT,
 });
 
+
+
 // Test the database connection
 (async () => {
   try {
@@ -21,8 +23,22 @@ const pool = mysql.createPool({
   }
 })();
 
+
 // Get all videos
 exports.handler = async (event) => {
+  // Handle CORS preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+      body: '',
+    };
+  }
+
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,

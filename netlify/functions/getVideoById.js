@@ -1,6 +1,5 @@
 
 
-
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
@@ -13,9 +12,26 @@ const pool = mysql.createPool({
 });
 
 exports.handler = async (event) => {
+  // Handle CORS preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+      body: '',
+    };
+  }
+
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Method Not Allowed' }),
     };
   }
@@ -27,6 +43,10 @@ exports.handler = async (event) => {
     if (video.length === 0) {
       return {
         statusCode: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        },
         body: JSON.stringify({ message: 'Video not found' }),
       };
     }
@@ -39,6 +59,10 @@ exports.handler = async (event) => {
     if (chunks.length === 0) {
       return {
         statusCode: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        },
         body: JSON.stringify({ message: 'No chunks found for this video' }),
       };
     }
@@ -48,6 +72,8 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Content-Type': 'video/mp4',
       },
       body: videoBuffer.toString('base64'),
@@ -57,14 +83,14 @@ exports.handler = async (event) => {
     console.error('Error:', error);
     return {
       statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*', // Allow requests from any origin
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      },
       body: JSON.stringify({ message: 'Error retrieving video' }),
     };
   }
 };
-
-
-
-
 
 
 
