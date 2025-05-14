@@ -2,7 +2,6 @@
 
 
 
-
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
@@ -14,87 +13,63 @@ const pool = mysql.createPool({
   port: process.env.PORT,
 });
 
-exports.handler = async (event) => {
-  // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-      body: '',
-    };
+const http = require('http');
+
+exports.handler = async (req, res) => {
+  // Handle CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
   }
 
-  if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      },
-      body: JSON.stringify({ message: 'Method Not Allowed' }),
-    };
+  if (req.method !== 'GET') {
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'Method Not Allowed' }));
+    return;
   }
 
-  const id = event.queryStringParameters.id;
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const id = url.searchParams.get('id');
   console.log('Received request for video ID:', id);
 
   try {
     const [video] = await pool.query('SELECT * FROM videos WHERE id = ?', [id]);
-    console.log('Video metadata:', video);
     if (video.length === 0) {
-      return {
-        statusCode: 404,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        },
-        body: JSON.stringify({ message: 'Video not found' }),
-      };
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: 'Video not found' }));
+      return;
     }
 
     const [chunks] = await pool.query(
       'SELECT chunk_data FROM video_chunks WHERE video_id = ? ORDER BY chunk_index ASC',
       [id]
     );
-    console.log('Number of chunks:', chunks.length);
 
     if (chunks.length === 0) {
-      return {
-        statusCode: 404,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        },
-        body: JSON.stringify({ message: 'No chunks found for this video' }),
-      };
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: 'No chunks found for this video' }));
+      return;
     }
 
     // Stream the video chunks
-    const videoStream = chunks.map((chunk) => chunk.chunk_data).join('');
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Content-Type': 'video/mp4',
-        'Transfer-Encoding': 'chunked',
-      },
-      body: videoStream,
-      isBase64Encoded: true,
-    };
+    res.writeHead(200, {
+      'Content-Type': 'video/mp4',
+      'Transfer-Encoding': 'chunked',
+    });
+
+    chunks.forEach((chunk) => {
+      res.write(chunk.chunk_data);
+    });
+
+    res.end();
   } catch (error) {
     console.error('Error:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      },
-      body: JSON.stringify({ message: 'Error retrieving video' }),
-    };
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'Error retrieving video' }));
   }
 };
