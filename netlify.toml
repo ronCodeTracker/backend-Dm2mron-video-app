@@ -3,3 +3,9 @@
   command = "echo 'No build step required'" # No-op command
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+
+[functions.getVideoById]
+  memory = 1024 # Increase memory to 1 GB
+  timeout = 20  # Increase timeout to 20 seconds
