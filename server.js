@@ -4,7 +4,7 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORTONE = process.env.PORT || 3000;
 
 // Create a MySQL connection pool
 const pool = mysql.createPool({
@@ -78,7 +78,7 @@ app.get('/getAllVideos', async (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORTONE, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
 
