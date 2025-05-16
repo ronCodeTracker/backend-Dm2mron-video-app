@@ -60,7 +60,7 @@ app.post('/uploadChunk', upload.single('video'), async (req, res) => {
         'SELECT id FROM videos WHERE name = ? AND category = ? ORDER BY created_at DESC LIMIT 1',
         [name, category]
       );
-      vid = rows[0]?.id;
+      vid = rows.length > 0 ? rows[0].id : undefined;
     }
 
     // Insert chunk
