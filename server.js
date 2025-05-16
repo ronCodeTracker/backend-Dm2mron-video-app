@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 // CREATE: Upload video chunk (call this for each chunk)
 app.post('/uploadChunk', upload.single('video'), async (req, res) => {
   const { name, category, chunkIndex, totalChunks, videoId } = req.body;
-  const chunkData = req.file?.buffer;
+  const chunkData = req.file && req.file.buffer;
   if (!name || !category || chunkIndex === undefined || !chunkData) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
