@@ -104,12 +104,33 @@ app.get('/getVideoById', async (req, res) => {
     );
     if (chunks.length === 0) return res.status(404).json({ message: 'No chunks found for this video' });
 
-    res.writeHead(200, {
-      'Content-Type': 'video/mp4',
-      'Transfer-Encoding': 'chunked',
-    });
-    chunks.forEach((chunk) => res.write(chunk.chunk_data));
-    res.end();
+    // Concatenate all chunks into a single Buffer
+    const videoBuffer = Buffer.concat(chunks.map(chunk => chunk.chunk_data));
+    const videoSize = videoBuffer.length;
+    const range = req.headers.range;
+
+    if (range) {
+      // Parse Range header
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : videoSize - 1;
+      const chunkSize = (end - start) + 1;
+      const videoChunk = videoBuffer.slice(start, end + 1);
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${videoSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'video/mp4',
+      });
+      res.end(videoChunk);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': videoSize,
+        'Content-Type': 'video/mp4',
+      });
+      res.end(videoBuffer);
+    }
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Error retrieving video' });
