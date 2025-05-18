@@ -30,8 +30,8 @@ pool.getConnection()
 // Improved CORS Middleware
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin: *'); // Or specify your frontend URL for more security
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers: Content-Type, Authorization');
   // If you use cookies/auth, uncomment the next line:
   // res.setHeader('Access-Control-Allow-dentialsCre', 'true');
   if (req.method === 'OPTIONS') {
