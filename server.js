@@ -28,14 +28,18 @@ pool.getConnection()
 
 
 // Improved CORS Middleware
+const allowedOrigins = [
+  'https://frontend-dm2mron-video.netlify.app'
+];
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin: *'); // Or specify your frontend URL for more security
-  res.setHeader('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers: Content-Type, Authorization');
-  // If you use cookies/auth, uncomment the next line:
-  // res.setHeader('Access-Control-Allow-dentialsCre', 'true');
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(204); // 204 is better for preflight
+    return res.sendStatus(204);
   }
   next();
 });
