@@ -27,18 +27,23 @@ pool.getConnection()
   });
 
 
-// Middleware
-app.use(express.json());
+// Improved CORS Middleware
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Or specify your frontend URL for more security
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // If you use cookies/auth, uncomment the next line:
+  // res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204); // 204 is better for preflight
+  }
   next();
 });
 
 // CREATE: Upload video chunk (call this for each chunk)
 app.post('/uploadChunk', upload.single('video'), async (req, res) => {
+
+
   const { name, category, chunkIndex, totalChunks, videoId } = req.body;
   const chunkData = req.file && req.file.buffer;
   if (!name || !category || chunkIndex === undefined || !chunkData) {
