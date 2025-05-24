@@ -1,191 +1,44 @@
-const express = require('express');
-const mysql = require('mysql2/promise');
-const multer = require('multer');
-require('dotenv').config();
 
-const app = express();
-const PORTONE = process.env.PORTONE || 3000;
-const upload = multer(); // for parsing multipart/form-data
 
-// MySQL pool
-const pool = mysql.createPool({
-  host: process.env.DATABASE_URL,
-  user: process.env.USER_NAME,
-  password: process.env.PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.PORT,
+
+
+import { S3 } from 'aws-sdk';
+
+const spacesEndpoint = process.env.DO_SPACES_ENDPOINT;
+const s3 = new S3({
+  endpoint: `https://${spacesEndpoint}`,
+  accessKeyId: process.env.DO_SPACES_KEY,
+  secretAccessKey: process.env.DO_SPACES_SECRET,
+  region: 'us-east-1', // DigitalOcean Spaces uses this region
+  signatureVersion: 'v4'
 });
 
-// --- HIGHLIGHTED: Test DB connection and log result ---
-pool.getConnection()
-  .then(conn => {
-    console.log('✅ Connected to MySQL database!');
-    conn.release();
-  })
-  .catch(err => {
-    console.error('❌ Unable to connect to MySQL database:', err.message);
-  });
+export const POST = async ({ request }) => {
+  const data = await request.formData();
+  const file = data.get('file'); // expects a <input type="file" name="file" />
 
-
-// Improved CORS Middleware
-const allowedOrigins = [
-  'https://frontend-dm2mron-video.netlify.app'
-];
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  if (!file) {
+    return new Response(JSON.stringify({ error: 'No file uploaded' }), { status: 400 });
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
 
-// CREATE: Upload video chunk (call this for each chunk)
-app.post('/uploadChunk', upload.single('video'), async (req, res) => {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
-
-  const { name, category, chunkIndex, totalChunks, videoId } = req.body;
-  const chunkData = req.file && req.file.buffer;
-  if (!name || !category || chunkIndex === undefined || !chunkData) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
+  const params = {
+    Bucket: process.env.DO_SPACES_BUCKET,
+    Key: `videos/${file.name}`,
+    Body: buffer,
+    ACL: 'public-read',
+    ContentType: file.type
+  };
 
   try {
-    let vid = videoId;
-    // On first chunk, create the video record
-    if (!vid && chunkIndex == 0) {
-      const [result] = await pool.query(
-        'INSERT INTO videos (name, category, created_at) VALUES (?, ?, NOW())',
-        [name, category]
-      );
-      vid = result.insertId;
-    } else if (!vid) {
-      // Find videoId by name and category (fallback)
-      const [rows] = await pool.query(
-        'SELECT id FROM videos WHERE name = ? AND category = ? ORDER BY created_at DESC LIMIT 1',
-        [name, category]
-      );
-      vid = rows.length > 0 ? rows[0].id : undefined;
-    }
-
-    // Insert chunk
-    await pool.query(
-      'INSERT INTO video_chunks (video_id, chunk_index, chunk_data) VALUES (?, ?, ?)',
-      [vid, chunkIndex, chunkData]
-    );
-
-    // If last chunk, respond with success
-    if (parseInt(chunkIndex) + 1 === parseInt(totalChunks)) {
-      return res.json({ message: 'Upload complete', videoId: vid });
-    }
-    res.json({ message: 'Chunk uploaded', videoId: vid });
-  } catch (error) {
-    console.error('Error uploading chunk:', error);
-    res.status(500).json({ message: 'Error uploading chunk' });
+    const upload = await s3.upload(params).promise();
+    return new Response(JSON.stringify({ url: upload.Location }), { status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
-});
+};
 
-// READ: Get all videos
-app.get('/getAllVideos', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT id, name, category, created_at FROM videos');
-    res.json(rows);
-  } catch (error) {
-    console.error('Error fetching videos:', error);
-    res.status(500).json({ message: 'Error fetching videos' });
-  }
-});
 
-// READ: Get video by ID (streams video)
-app.get('/getVideoById', async (req, res) => {
-  const id = req.query.id;
-  try {
-    const [video] = await pool.query('SELECT * FROM videos WHERE id = ?', [id]);
-    if (video.length === 0) return res.status(404).json({ message: 'Video not found' });
 
-    const [chunks] = await pool.query(
-      'SELECT chunk_data FROM video_chunks WHERE video_id = ? ORDER BY chunk_index ASC',
-      [id]
-    );
-    if (chunks.length === 0) return res.status(404).json({ message: 'No chunks found for this video' });
-
-    // Concatenate all chunks into a single Buffer
-    const videoBuffer = Buffer.concat(chunks.map(chunk => chunk.chunk_data));
-    const videoSize = videoBuffer.length;
-    const range = req.headers.range;
-
-    if (range) {
-      // Parse Range header
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : videoSize - 1;
-      const chunkSize = (end - start) + 1;
-      const videoChunk = videoBuffer.slice(start, end + 1);
-
-      res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${videoSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize,
-        'Content-Type': 'video/mp4',
-      });
-      res.end(videoChunk);
-    } else {
-      res.writeHead(200, {
-        'Content-Length': videoSize,
-        'Content-Type': 'video/mp4',
-      });
-      res.end(videoBuffer);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error retrieving video' });
-  }
-});
-
-// UPDATE: Update video metadata
-app.put('/videos/:id', async (req, res) => {
-  const { id } = req.params;
-  const { name, category } = req.body;
-  if (!name && !category) {
-    return res.status(400).json({ message: 'At least one field (name or category) is required' });
-  }
-  try {
-    const fields = [];
-    const values = [];
-    if (name) { fields.push('name = ?'); values.push(name); }
-    if (category) { fields.push('category = ?'); values.push(category); }
-    values.push(id);
-    const [result] = await pool.query(
-      `UPDATE videos SET ${fields.join(', ')} WHERE id = ?`,
-      values
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Video not found' });
-    res.json({ message: 'Video updated' });
-  } catch (error) {
-    console.error('Error updating video:', error);
-    res.status(500).json({ message: 'Error updating video' });
-  }
-});
-
-// DELETE: Delete a video and its chunks
-app.delete('/videos/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query('DELETE FROM video_chunks WHERE video_id = ?', [id]);
-    const [result] = await pool.query('DELETE FROM videos WHERE id = ?', [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Video not found' });
-    res.json({ message: 'Video and its chunks deleted' });
-  } catch (error) {
-    console.error('Error deleting video:', error);
-    res.status(500).json({ message: 'Error deleting video' });
-  }
-});
-
-// Start the server
-app.listen(PORTONE, () => {
-  console.log(`Server is running on http://localhost:${PORTONE}`);
-});

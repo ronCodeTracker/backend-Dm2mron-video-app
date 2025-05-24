@@ -1,18 +1,12 @@
 {
-  "name": "backenddm2mron",
-  "version": "1.0.0",
-  "description": "backend for Deron video app",
+  "name": "backend-dm2mron-videoapp",
+  "version": "1.2.0",
+  "description": "backend for video app for Daron for drone video footage",
+  "license": "ISC",
+  "author": "Ronald Kiefer",
+  "type": "commonjs",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Ronald K",
-  "license": "ISC",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "multer": "^1.4.5-lts.2",
-    "mysql2": "^3.14.1"
   }
 }
